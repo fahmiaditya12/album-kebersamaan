@@ -151,12 +151,14 @@
   footer h2{font-size:clamp(26px,4vw,38px);margin:6px 0 10px;color:#fff}
   footer p{max-width:480px;margin:0 auto;font-weight:600;opacity:.95;line-height:1.6}
   footer .hearts{font-size:24px;margin-top:18px;letter-spacing:6px}
-  .gal-head{padding:30px 0 10px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  .gal-head{padding:24px 0 10px;display:flex;flex-direction:column;gap:14px}
+  .gal-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .gal-titlewrap{text-align:center}
   .back{background:none;border:none;cursor:pointer;font-family:'Fredoka';font-weight:600;font-size:16px;color:var(--grape);display:flex;align-items:center;gap:6px}
   .back:hover{text-decoration:underline}
   .gal-count{font-family:'Caveat';font-size:24px;color:var(--ink-soft);font-weight:700}
-  .masonry{columns:4 230px;column-gap:18px;padding-bottom:60px;margin-top:14px}
-  .masonry .polaroid{width:100%;margin:0 0 18px;display:inline-block;break-inside:avoid;cursor:pointer}
+  .masonry{columns:4 230px;column-gap:18px;padding-bottom:110px;margin-top:14px}
+  .masonry .polaroid{width:100%;margin:0 0 18px;display:block;break-inside:avoid;-webkit-column-break-inside:avoid;page-break-inside:avoid;cursor:pointer}
   .masonry .polaroid:nth-child(3n+1){transform:rotate(-2deg)}
   .masonry .polaroid:nth-child(3n+2){transform:rotate(1.5deg)}
   .masonry .polaroid:nth-child(3n+3){transform:rotate(-1deg)}
@@ -501,12 +503,14 @@
 <div id="gallery" class="view">
   <div class="wrap">
     <div class="gal-head">
-      <button class="back" onclick="goLanding()">← Kembali</button>
-      <div>
+      <div class="gal-top">
+        <button class="back" onclick="goLanding()">← Kembali</button>
+        <button class="btn-big" style="font-size:16px;padding:12px 22px" onclick="openUpload()">+ Tambah Foto</button>
+      </div>
+      <div class="gal-titlewrap">
         <h2 class="title" style="font-size:30px">Album Kita 📷</h2>
         <span class="gal-count" id="galCount">memuat…</span>
       </div>
-      <button class="btn-big" style="font-size:16px;padding:12px 22px" onclick="openUpload()">+ Tambah Foto</button>
     </div>
     <div id="galleryArea"><div class="loading">memuat foto… ⏳</div></div>
   </div>
@@ -591,6 +595,7 @@
       </div>
       <input type="file" id="profFile" accept="image/*" style="display:none" onchange="handleProfPhoto(event)" />
     </div>
+    <div class="field"><label>Nama tampilan</label><input type="text" id="profName" maxlength="20" placeholder="cth: Fahmi Ganteng" /></div>
     <div class="field"><label>Deskripsi singkat</label><input type="text" id="profCaption" maxlength="40" placeholder="cth: tukang foto 📸" /></div>
     <div class="modal-actions">
       <button class="cancel" onclick="closeProfile()">Batal</button>
@@ -664,13 +669,18 @@ const session = {
 };
 
 function colorOf(name){ const u = USERS.find(u=>u.name===name); return u?u.color:'#9B7BF0'; }
+function nameOf(username){ const p = profiles[username]; return (p && p.name && p.name.trim()) ? p.name : username; }
 
 function buildLogin(){
-  document.getElementById('userChips').innerHTML = USERS.map(u=>
-    `<div class="uchip" data-name="${u.name}" onclick="pickUser('${u.name}')">
-       <div class="av" style="background:${u.color}">${u.name[0]}</div>
-       <span>${u.name}</span></div>`
-  ).join('');
+  document.getElementById('userChips').innerHTML = USERS.map(u=>{
+    const p = profiles[u.name] || {};
+    const dn = (p.name && p.name.trim()) ? p.name : u.name;
+    const av = p.photo
+      ? `<div class="av" style="background-image:url('${p.photo}');background-size:cover;background-position:center"></div>`
+      : `<div class="av" style="background:${u.color}">${u.name[0]}</div>`;
+    return `<div class="uchip ${selectedUser===u.name?'sel':''}" data-name="${u.name}" onclick="pickUser('${u.name}')">
+       ${av}<span>${esc(dn)}</span></div>`;
+  }).join('');
 }
 function pickUser(name){
   selectedUser = name;
@@ -720,6 +730,8 @@ function doLogout(){
   document.getElementById('musicPop').classList.remove('open');
 }
 
+const FRAME_COLORS = ['#ffffff','#FFF1DC','#FFE6EC','#E6F7F2','#EEE9FC','#E6F1FB','#FFF6D9','#FCE9F3'];
+const TAPE_COLORS  = ['rgba(255,201,60,.6)','rgba(255,107,107,.55)','rgba(47,201,180,.55)','rgba(155,123,240,.55)','rgba(84,182,232,.55)','rgba(255,143,200,.55)'];
 const PH = [
   {g:'linear-gradient(135deg,#FF6B6B,#FFC93C)',e:'🌅',c:'sunset squad'},
   {g:'linear-gradient(135deg,#2FC9B4,#54B6E8)',e:'🏖️',c:'main ke pantai'},
@@ -764,7 +776,7 @@ function init(){
     onSnapshot(collection(db,'profiles'), (snap)=>{
       profiles = {};
       snap.docs.forEach(d=>{ profiles[d.id] = d.data(); });
-      renderCrew(); updateMe();
+      renderCrew(); updateMe(); buildLogin();
     }, (err)=>{ console.error(err); });
   } else {
     updateCount();
@@ -900,23 +912,28 @@ function renderCrew(){
   el.innerHTML = USERS.map(u=>{
     const p = profiles[u.name] || {};
     const cap = (p.caption && p.caption.trim()) ? p.caption : u.desc;
+    const dn = nameOf(u.name);
     const me = (u.name === currentUser);
     const av = p.photo
-      ? `<div class="avatar has-photo" style="background-image:url('${p.photo}')">${u.name[0]}</div>`
+      ? `<div class="avatar has-photo" style="background-image:url('${p.photo}');cursor:zoom-in" onclick="openMemberPhoto('${u.name}')" title="lihat foto">${u.name[0]}</div>`
       : `<div class="avatar" style="background:${u.color}">${u.name[0]}</div>`;
     return `<div class="friend ${me?'is-me':''}">
       ${av}
-      <span>${u.name}${me?' (kamu)':''}</span>
+      <span>${esc(dn)}${me?' (kamu)':''}</span>
       <small>${esc(cap)}</small>
       ${me?'<button class="edit-prof" onclick="openProfile()">✏️ Edit profil</button>':''}
     </div>`;
   }).join('');
 }
+function openMemberPhoto(username){
+  const p = profiles[username]; if(!p || !p.photo) return;
+  openImageLb(p.photo, nameOf(username));
+}
 function updateMe(){
   if(!currentUser) return;
   const av = document.getElementById('meAv');
   const p = profiles[currentUser] || {};
-  document.getElementById('meName').textContent = currentUser;
+  document.getElementById('meName').textContent = nameOf(currentUser);
   if(p.photo){
     av.classList.add('has-photo');
     av.style.backgroundImage = `url('${p.photo}')`;
@@ -935,6 +952,7 @@ function openProfile(){
   if(!currentUser) return;
   const p = profiles[currentUser] || {};
   tempProfPhoto = p.photo || '';
+  document.getElementById('profName').value = p.name || '';
   document.getElementById('profCaption').value = p.caption || '';
   if(tempProfPhoto){ loadProfEditor(tempProfPhoto); } else { clearProfEditor(); }
   document.getElementById('profOverlay').classList.add('open');
@@ -1028,15 +1046,16 @@ function bakeProfPhoto(){
 }
 async function saveProfile(){
   const caption = document.getElementById('profCaption').value.trim();
+  const name = document.getElementById('profName').value.trim();
   const btn = document.getElementById('profSaveBtn');
   btn.disabled = true; btn.textContent='menyimpan…';
   const photo = profEdit ? bakeProfPhoto() : '';   // crop yang diatur dibakar ke gambar
-  const data = { photo, caption };
+  const data = { photo, caption, name };
   if(db){
     try{ await setDoc(doc(db,'profiles',currentUser), data); }
     catch(e){ alert('Gagal menyimpan: '+e.message); }
   } else {
-    profiles[currentUser] = data; renderCrew(); updateMe();
+    profiles[currentUser] = data; renderCrew(); updateMe(); buildLogin();
   }
   btn.disabled = false; btn.textContent='Simpan';
   closeProfile();
@@ -1061,13 +1080,15 @@ function renderGallery(){
     area.innerHTML = `<div class="empty"><div class="big">🖼️</div><p>Albumnya masih kosong nih</p><small style="color:var(--ink-soft);font-weight:600">Jadilah yang pertama nambahin foto seru!</small><div style="margin-top:18px"><button class="btn-big" onclick="openUpload()">+ Tambah Foto Pertama</button></div></div>`;
     return;
   }
-  const items = photos.slice().reverse().map((p)=>{
+  const items = photos.slice().reverse().map((p, i)=>{
     const realIndex = photos.indexOf(p);
-    return `<div class="polaroid" onclick="openLb(${realIndex})">
+    const frame = FRAME_COLORS[i % FRAME_COLORS.length];
+    const tape  = TAPE_COLORS[(i*2+1) % TAPE_COLORS.length];
+    return `<div class="polaroid" style="background:${frame};--tape:${tape}" onclick="openLb(${realIndex})">
       <button class="del" onclick="event.stopPropagation();delPhoto('${p.id}')" title="hapus">×</button>
       <div class="pic" style="padding:0;height:auto"><img src="${p.data}" alt="${esc(p.caption)}"></div>
       <div class="cap">${esc(p.caption)||'momen kita'}</div>
-      ${p.by?`<div class="by">— ${esc(p.by)}</div>`:''}</div>`;
+      ${p.by?`<div class="by">— ${esc(nameOf(p.by))}</div>`:''}</div>`;
   }).join('');
   area.innerHTML = `<div class="masonry">${items}</div>`;
 }
@@ -1136,14 +1157,27 @@ async function delPhoto(id){
 }
 
 let lbIndex = 0;
-function openLb(i){ lbIndex=i; showLb(); document.getElementById('lightbox').classList.add('open'); }
+let lbSingle = false;
+function openImageLb(src, cap){
+  lbSingle = true;
+  document.getElementById('lbImg').src = src;
+  document.getElementById('lbCap').textContent = cap || '';
+  document.getElementById('lbBy').textContent = '';
+  document.querySelectorAll('.lb-nav').forEach(b=>b.style.display='none');
+  document.getElementById('lightbox').classList.add('open');
+}
+function openLb(i){
+  lbSingle = false;
+  document.querySelectorAll('.lb-nav').forEach(b=>b.style.display='');
+  lbIndex=i; showLb(); document.getElementById('lightbox').classList.add('open');
+}
 function showLb(){
   const p = photos[lbIndex]; if(!p) return;
   document.getElementById('lbImg').src = p.data || '';
   document.getElementById('lbCap').textContent = p.caption || '';
-  document.getElementById('lbBy').textContent = p.by ? '— '+p.by : '';
+  document.getElementById('lbBy').textContent = p.by ? '— '+nameOf(p.by) : '';
 }
-function lbStep(d){ lbIndex=(lbIndex+d+photos.length)%photos.length; showLb(); }
+function lbStep(d){ if(lbSingle) return; lbIndex=(lbIndex+d+photos.length)%photos.length; showLb(); }
 function closeLb(){ document.getElementById('lightbox').classList.remove('open'); }
 document.addEventListener('keydown',(e)=>{
   if(!document.getElementById('lightbox').classList.contains('open')) return;
@@ -1217,10 +1251,22 @@ function toggleMusic(){
 function pauseMusic(){ try{ if(ytPlayer && ytReady) ytPlayer.pauseVideo(); }catch(e){} isPlaying=false; reflectMusic(); }
 function nextTrack(){ playTrack(curTrack + 1); }
 function prevTrack(){ playTrack(curTrack - 1); }
+let autoplayArmed = false;
 function startMusicAutoplay(){
   // dipanggil dari klik tombol login (gesture) → boleh autoplay bersuara
   if(ytReady && ytPlayer){ playTrack(curTrack); }
   else { wantAutoplay = true; }
+  armAutoplayFallback();
+}
+function armAutoplayFallback(){
+  // di HP, autoplay kadang ditahan; mulai musik pada interaksi pertama
+  if(autoplayArmed) return; autoplayArmed = true;
+  const evs = ['pointerdown','touchstart','click','keydown'];
+  const tryStart = ()=>{
+    evs.forEach(ev=>window.removeEventListener(ev, tryStart));
+    if(!isPlaying){ if(ytReady && ytPlayer){ playTrack(curTrack); } else { wantAutoplay = true; } }
+  };
+  evs.forEach(ev=>window.addEventListener(ev, tryStart, {once:true, passive:true}));
 }
 
 /* ============ CHAT GENG (real-time) ============ */
@@ -1259,7 +1305,7 @@ function renderChat(){
     const mine = m.user === currentUser;
     const col = m.color || 'var(--grape)';
     return `<div class="msg ${mine?'me':'them'}">
-      ${mine?'':`<div class="who" style="color:${col}">${esc(m.user)}</div>`}
+      ${mine?'':`<div class="who" style="color:${col}">${esc(nameOf(m.user))}</div>`}
       <div class="bubble">${esc(m.text)}</div>
       <div class="time">${fmtTime(m.ts)}</div>
     </div>`;
@@ -1315,7 +1361,8 @@ document.addEventListener('click',(e)=>{
 Object.assign(window, { goGallery, goLanding, openUpload, closeUpload, handleFiles, savePhotos,
   delPhoto, openLb, lbStep, closeLb, toggleMusicPop, toggleMusic, nextTrack, prevTrack, playTrack,
   doLogin, doLogout, pickUser, openPicker, closePicker, addFeatured, removeFeatured,
-  toggleChat, sendChat, openProfile, closeProfile, handleProfPhoto, removeProfPhoto, saveProfile, zoomProf });
+  toggleChat, sendChat, openProfile, closeProfile, handleProfPhoto, removeProfPhoto, saveProfile, zoomProf,
+  openMemberPhoto, openImageLb });
 
 init();
 </script>
