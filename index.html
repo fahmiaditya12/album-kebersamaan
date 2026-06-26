@@ -198,6 +198,11 @@
   .lb img{max-width:90vw;max-height:74vh;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,.6);background:#fff;padding:10px}
   .lb .lb-cap{color:#fff;font-family:'Caveat';font-size:28px;margin-top:14px}
   .lb .lb-by{color:rgba(255,255,255,.7);font-weight:700;font-size:13px}
+  .lb-dl{margin-top:16px;border:none;cursor:pointer;font-family:'Fredoka';font-weight:600;font-size:15px;color:#fff;
+    background:linear-gradient(135deg,var(--coral),var(--sun));padding:11px 24px;border-radius:13px;box-shadow:var(--shadow);
+    display:inline-flex;align-items:center;gap:7px;transition:transform .15s,filter .15s}
+  .lb-dl:hover{transform:translateY(-2px);filter:brightness(.97)}
+  .lb-dl:active{transform:translateY(0)}
   .lb-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);border:none;color:#fff;width:54px;height:54px;border-radius:50%;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center}
   .lb-nav:hover{background:rgba(255,255,255,.3)}
   .lb-prev{left:18px}.lb-next{right:18px}
@@ -230,7 +235,7 @@
   .login-card h2{font-size:30px;font-weight:700}
   .login-card .sub{color:var(--ink-soft);font-weight:600;font-size:14px;margin:2px 0 22px}
   .login-card .ask{font-family:'Caveat';font-size:21px;color:var(--grape);font-weight:700;text-align:center;margin-bottom:8px}
-  .user-chips{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:20px}
+  .user-chips{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:0 auto 20px;max-width:212px}
   .uchip{cursor:pointer;background:var(--paper);border-radius:16px;padding:10px 8px 8px;width:62px;
     display:flex;flex-direction:column;align-items:center;gap:5px;transition:transform .15s, box-shadow .15s;border:2px solid transparent}
   .uchip:hover{transform:translateY(-3px)}
@@ -610,6 +615,7 @@
   <img id="lbImg" src="" alt="" />
   <div class="lb-cap" id="lbCap"></div>
   <div class="lb-by" id="lbBy"></div>
+  <button class="lb-dl" onclick="downloadPhoto()">⬇ Download foto</button>
   <button class="lb-nav lb-next" onclick="lbStep(1)">›</button>
 </div>
 </div><!-- /app-shell -->
@@ -1178,6 +1184,30 @@ function showLb(){
   document.getElementById('lbBy').textContent = p.by ? '— '+nameOf(p.by) : '';
 }
 function lbStep(d){ if(lbSingle) return; lbIndex=(lbIndex+d+photos.length)%photos.length; showLb(); }
+function dataURLtoBlob(dataurl){
+  const arr = dataurl.split(','); const mime = (arr[0].match(/:(.*?);/)||[])[1] || 'image/jpeg';
+  const bstr = atob(arr[1]); let n = bstr.length; const u8 = new Uint8Array(n);
+  while(n--) u8[n] = bstr.charCodeAt(n);
+  return new Blob([u8], {type:mime});
+}
+function downloadPhoto(){
+  const src = document.getElementById('lbImg').src;
+  if(!src) return;
+  let name = 'kenangan-kita';
+  if(!lbSingle && photos[lbIndex] && photos[lbIndex].caption){
+    const c = photos[lbIndex].caption.replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'-');
+    if(c) name = c;
+  }
+  try{
+    const url = URL.createObjectURL(dataURLtoBlob(src));
+    const a = document.createElement('a'); a.href = url; a.download = name + '.jpg';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 2000);
+  }catch(e){
+    const a = document.createElement('a'); a.href = src; a.download = name + '.jpg';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+}
 function closeLb(){ document.getElementById('lightbox').classList.remove('open'); }
 document.addEventListener('keydown',(e)=>{
   if(!document.getElementById('lightbox').classList.contains('open')) return;
@@ -1362,7 +1392,7 @@ Object.assign(window, { goGallery, goLanding, openUpload, closeUpload, handleFil
   delPhoto, openLb, lbStep, closeLb, toggleMusicPop, toggleMusic, nextTrack, prevTrack, playTrack,
   doLogin, doLogout, pickUser, openPicker, closePicker, addFeatured, removeFeatured,
   toggleChat, sendChat, openProfile, closeProfile, handleProfPhoto, removeProfPhoto, saveProfile, zoomProf,
-  openMemberPhoto, openImageLb });
+  openMemberPhoto, openImageLb, downloadPhoto });
 
 init();
 </script>
